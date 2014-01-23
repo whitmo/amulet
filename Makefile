@@ -1,21 +1,31 @@
-clean:
-	find . -name '*.pyc' -delete
-	find . -name '*.bak' -delete
-	rm -f .coverage
+all: install test
 
-test:
-	@echo Testing Python 3...
-	@nosetests3 --nologcapture
-	@echo Testing Python 2...
-	@nosetests --nologcapture
-
-coverage:
-	@echo Testing with coverage...
-	@nosetests3 --nologcapture --with-coverage --cover-package=juju_tests
-
-lint:
-	@find $(sources) -type f \( -iname '*.py' ! -iname '__init__.py' \) -print0 | xargs -r0 flake8
+install:
+	@python3 setup.py install
+	@python2 setup.py install
 
 check: test lint
 
-all: clean coverage lint
+build: 
+	./bin/configure
+
+test: build
+	./bin/test
+
+coverage: build
+	./bin/test coverage
+
+lint: build
+	@./bin/lint
+
+clean:
+	rm -rf .venv-*
+	find . -name '__pycache__' -type d -print0 | rm -rf
+	find . -name '*.pyc' -delete
+	find . -name '*.bak' -delete
+	find . -name '*.py[co]' -delete
+	find . -type f -name '*~' -delete
+	find . -name '*.bak' -delete
+
+clean-all: clean
+	rm -rf .pip-cache
