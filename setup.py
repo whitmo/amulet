@@ -4,7 +4,8 @@ install_requires = [
     'requests',
     'urllib3',
     'charmworldlib',
-    'PyYAML'
+    'PyYAML',
+    'jujuclient'
 ]
 
 tests_require = [
