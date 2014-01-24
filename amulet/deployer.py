@@ -7,10 +7,9 @@ import shutil
 import subprocess
 import tempfile
 
-from charmworldlib.charm import Charm
+from charmworldlib.charm import Charm, Charms
 
 from . import helpers
-from . import charmstore
 from . import sentry
 
 from . import wait
