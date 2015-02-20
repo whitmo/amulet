@@ -65,20 +65,23 @@ class Deployment(object):
                 service,
                 charm=service_config.get('charm'),
                 units=service_config.get('num_units', 1),
+                branch=service_config.get('branch', None),
                 constraints=constraints,
+                series=self.series
             )
             if service_config.get('options'):
                 self.configure(service, service_config['options'])
-        self.series = schema['series']
-        self.relations = schema['relations']
 
-    def add(self, service, charm=None, units=1, constraints=None):
+    def add(self, service, charm=None, units=1,
+            constraints=None, branch=None, series=None):
         if self.deployed:
             raise NotImplementedError('Environment already setup')
+
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
 
-        c = self.charm_cache.fetch(service, charm, self.series)
+        import ipdb; ipdb.set_trace()
+        c = self.charm_cache.fetch(service, charm, branch=branch, series=self.series)
 
         if c.subordinate:
             for rtype in ['provides', 'requires']:
