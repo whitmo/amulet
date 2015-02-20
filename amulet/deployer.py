@@ -52,6 +52,8 @@ class Deployment(object):
 
     def load(self, deploy_cfg):
         schema = next(iter(deploy_cfg.values()))
+        self.series = schema['series']
+        self.relations = schema['relations']
         for service, service_config in schema['services'].items():
             constraints = service_config.get('constraints')
             if constraints:
