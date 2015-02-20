@@ -3,29 +3,58 @@ import yaml
 import shutil
 import tempfile
 
+from functools import partial
+
 from charmworldlib.charm import Charm
 from .helpers import run_bzr, setup_bzr
 
 
-def get_charm(charm_path, series='precise'):
-    def with_series(charm_path):
-        if '/' not in charm_path:
-            return '{}/{}'.format(series, charm_path)
-        return charm_path
+class CharmCache(dict):
+    def __init__(self, test_charm):
+        super(CharmCache, self).__init__()
+        self.test_charm = test_charm
 
-    if charm_path.startswith('cs:'):
-        return Charm(with_series(charm_path))
-    if charm_path.startswith('lp:'):
-        return LaunchpadCharm(charm_path)
-    if charm_path.startswith('local:'):
-        return LocalCharm(
-            os.path.join(
-                os.environ.get('JUJU_REPOSITORY', ''),
-                charm_path[len('local:'):]))
-    if os.path.exists(os.path.expanduser(charm_path)):
-        return LocalCharm(charm_path)
+    @staticmethod
+    def get_charm(charm_path, branch=None, series='precise'):
+        if charm_path.startswith('lp:'):
+            return LaunchpadCharm(charm_path)
+        elif branch.startswith('lp:'):
+            return LaunchpadCharm(branch)
 
-    return Charm(with_series(charm_path))
+        if charm_path.startswith('local:'):
+            return LocalCharm(
+                os.path.join(
+                    os.environ.get('JUJU_REPOSITORY', ''),
+                    charm_path[len('local:'):]))
+
+        if branch.endswith('.git'):
+            return GitCharm(branch, name=charm_path)
+
+        if os.path.exists(os.path.expanduser(charm_path)):
+            return LocalCharm(charm_path)
+
+        return Charm(with_series(charm_path, series))
+
+    def __getitem__(self, service):
+        return self.fetch(service)
+
+    def fetch(self, service, charm=None, branch=None, series='precise'):
+        charm = super(CharmCache, self).get(service, None)
+        if charm is not None:
+            return charm
+
+        charm = charm or service
+        charm = os.getcwd() if charm == self.test_charm else charm
+        self[service] = self.get_charm(charm,
+                                       branch=branch,
+                                       series=series)
+        return self.get(service)
+
+
+def with_series(charm_path, series):
+    if '/' not in charm_path:
+        return '{}/{}'.format(series, charm_path)
+    return charm_path
 
 
 def is_branch(path):
@@ -95,6 +124,26 @@ class LocalCharm(object):
         temp_dir = getattr(self, 'temp_dir', None)
         if temp_dir:
             shutil.rmtree(temp_dir)
+
+
+class GitCharm(object):
+    def __init__(self, fork, name=None):
+        self.name = name
+        self.url = None
+        self.subordinate = False
+        self.code_source = self.source = {'location': fork, 'type': 'git'}
+        self.relations = {}
+        self.provides = {}
+        self.requires = {}
+        self._raw = self._load(os.path.join(fork, 'metadata.yaml'))
+        self._parse(self._raw)
+
+    @property
+    def _raw(self):
+        pass
+
+    def __repr__(self):
+        return '<GitCharm %s>' % self.code_source['location']
 
 
 class LaunchpadCharm(object):

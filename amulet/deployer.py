@@ -26,24 +26,7 @@ def get_charm_name(dir_):
         return os.path.basename(dir_)
 
 
-class CharmCache(dict):
-    def __init__(self, test_charm):
-        super(CharmCache, self).__init__()
-        self.test_charm = test_charm
 
-    def __getitem__(self, service):
-        return self.fetch(service)
-
-    def fetch(self, service, charm=None, series='precise'):
-        try:
-            return super(CharmCache, self).__getitem__(service)
-        except KeyError:
-            charm = charm or service
-            self[service] = get_charm(
-                os.getcwd() if charm == self.test_charm else charm,
-                series=series,
-            )
-            return super(CharmCache, self).__getitem__(service)
 
 
 class Deployment(object):
