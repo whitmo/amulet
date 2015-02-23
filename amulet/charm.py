@@ -21,7 +21,7 @@ class CharmCache(dict):
     def get_charm(charm_path, branch=None, series='precise'):
         if charm_path.startswith('lp:'):
             return LaunchpadCharm(charm_path)
-        elif branch.startswith('lp:'):
+        elif branch and branch.startswith('lp:'):
             return LaunchpadCharm(branch)
 
         if charm_path.startswith('local:'):
@@ -30,7 +30,7 @@ class CharmCache(dict):
                     os.environ.get('JUJU_REPOSITORY', ''),
                     charm_path[len('local:'):]))
 
-        if branch.endswith('.git'):
+        if branch and branch.endswith('.git'):
             return GitCharm(branch, name=charm_path)
 
         if os.path.exists(os.path.expanduser(charm_path)):
