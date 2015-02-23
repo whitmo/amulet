@@ -9,7 +9,7 @@ import yaml
 from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
 
-from .charm import get_charm
+from .charm import CharmCache
 
 
 def get_charm_name(dir_):
@@ -24,9 +24,6 @@ def get_charm_name(dir_):
             return yaml.load(f)['name']
     except:
         return os.path.basename(dir_)
-
-
-
 
 
 class Deployment(object):

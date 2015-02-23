@@ -1,12 +1,15 @@
-import os
-import yaml
-import shutil
-import tempfile
-
-from functools import partial
-
+from .helpers import reify
+from .helpers import run_bzr
+from .helpers import setup_bzr
 from charmworldlib.charm import Charm
-from .helpers import run_bzr, setup_bzr
+from path import path
+from path import tempdir
+import os
+import shlex
+import shutil
+import subprocess
+import tempfile
+import yaml
 
 
 class CharmCache(dict):
@@ -90,8 +93,10 @@ class LocalCharm(object):
     def _make_temp_copy(self, path):
         d = tempfile.mkdtemp(prefix='charm')
         temp_charm_dir = os.path.join(d, os.path.basename(path))
+
         def ignore(src, names):
             return ['.git', '.bzr']
+
         shutil.copytree(path, temp_charm_dir, symlinks=True, ignore=ignore)
         setup_bzr(temp_charm_dir)
         run_bzr(["add", "."], temp_charm_dir)
@@ -126,36 +131,7 @@ class LocalCharm(object):
             shutil.rmtree(temp_dir)
 
 
-class GitCharm(object):
-    def __init__(self, fork, name=None):
-        self.name = name
-        self.url = None
-        self.subordinate = False
-        self.code_source = self.source = {'location': fork, 'type': 'git'}
-        self.relations = {}
-        self.provides = {}
-        self.requires = {}
-        self._raw = self._load(os.path.join(fork, 'metadata.yaml'))
-        self._parse(self._raw)
-
-    @property
-    def _raw(self):
-        pass
-
-    def __repr__(self):
-        return '<GitCharm %s>' % self.code_source['location']
-
-
-class LaunchpadCharm(object):
-    def __init__(self, branch):
-        self.url = None
-        self.subordinate = False
-        self.code_source = self.source = {'location': branch, 'type': 'bzr'}
-        self.relations = {}
-        self.provides = {}
-        self.requires = {}
-        self._raw = self._load(os.path.join(branch, 'metadata.yaml'))
-        self._parse(self._raw)
+class VCSCharm(object):
 
     def _parse(self, metadata):
         rel_keys = ['provides', 'requires']
@@ -165,12 +141,59 @@ class LaunchpadCharm(object):
 
             setattr(self, key, val)
 
-    def _load(self, metadata_path):
-        mdata = run_bzr(['cat', metadata_path], None)
-        return yaml.safe_load(mdata)
-
     def __str__(self):
         return yaml.dump(self._raw)
+
+
+class GitCharm(VCSCharm):
+    call = staticmethod(subprocess.check_call)
+
+    def __init__(self, fork, name=None):
+        self.name = name
+        self.url = None
+        self.subordinate = False
+        self.code_source = self.source = {'location': fork, 'type': 'git'}
+        self.relations = {}
+        self.provides = {}
+        self.requires = {}
+        self.fork = fork
+        self._parse(self._raw)
+
+    @reify
+    def _raw(self):
+        with tempdir() as td:
+            with td:
+                cmd = "git clone -n --depth=1 {} {}"\
+                  .format(self.fork, self.name)
+                self.call(shlex.split(cmd))
+
+                cmd = "git checkout HEAD metadata.yaml"
+                with td / self.name:
+                    self.call(shlex.split(cmd))
+
+                md = td / self.name / 'metadata.yaml'
+                return yaml.safe_load(md.text())
+
+    def __repr__(self):
+        return '<GitCharm %s>' % self.code_source['location']
+
+
+class LaunchpadCharm(VCSCharm):
+    def __init__(self, branch):
+        self.url = None
+        self.subordinate = False
+        self.code_source = self.source = {'location': branch, 'type': 'bzr'}
+        self.relations = {}
+        self.provides = {}
+        self.requires = {}
+        self._branch = branch
+        self._parse(self._raw)
+
+    @reify
+    def _raw(self):
+        metadata_path = path(self._branch) / 'metadata.yaml'
+        mdata = run_bzr(['cat', metadata_path], None)
+        return yaml.safe_load(mdata)
 
     def __repr__(self):
         return '<LaunchpadCharm %s>' % self.code_source['location']
