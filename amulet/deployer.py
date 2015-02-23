@@ -5,6 +5,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import contextlib
 import yaml
 
 from path import path
@@ -278,6 +279,19 @@ class Deployment(object):
             raise ValueError('%s has not yet been described' % service)
         self.services[service]['expose'] = True
 
+    @contextlib.contextmanager
+    def deploy_w_timeout_and_dir(self, timeout, deploy_dir):
+        """
+        :param timeout: Amount of time to wait for deployment to complete.
+        :param deploy_dir: working directory for deployment command to run
+
+        Sets timeout and working directory for wrapped block. If successful,
+        sets instance.deployed.
+        """
+        with self.deployer_dir, unit_timesout(timeout):
+            yield
+        self.deployed = True
+
     def setup(self, timeout=600, cleanup=True):
         """Deploy the workload.
 
@@ -304,19 +318,13 @@ class Deployment(object):
             cmd = cmd.format(**cmd_args)
             self.log.debug(cmd)
 
-            with unit_timesout(timeout), self.deployer_dir:
+            with self.deploy_w_timeout_and_dir(timeout, self.deployer_dir):
                 subprocess.check_call(shlex.split(cmd))
-                self.deployed = True
 
+        self.sentry = Talisman(self.services)
         if cleanup is False:
             tmpdir.makedirs()
             (tmpdir / 'deployer-schema.json').write_text(schema_json)
-
-        if not self.deployed:
-            raise Exception('Deployment failed for an unknown reason')
-
-        if self.deployed:
-            self.sentry = Talisman(self.services)
 
     def deployer_map(self, services, relations):
         deployer_map = {
