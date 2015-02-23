@@ -42,11 +42,12 @@ class CharmCache(dict):
         return self.fetch(service)
 
     def fetch(self, service, charm=None, branch=None, series='precise'):
+        charm_ = charm
         charm = super(CharmCache, self).get(service, None)
         if charm is not None:
             return charm
 
-        charm = charm or service
+        charm = charm_ or service
         charm = os.getcwd() if charm == self.test_charm else charm
         self[service] = self.get_charm(charm,
                                        branch=branch,
