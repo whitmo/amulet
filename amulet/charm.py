@@ -162,17 +162,19 @@ class GitCharm(VCSCharm):
     @reify
     def _raw(self):
         with tempdir() as td:
-            with td:
-                cmd = "git clone -n --depth=1 {} {}"\
-                  .format(self.fork, self.name)
+            cmd = "git clone -n --depth=1 {} {}"\
+                .format(self.fork, self.name)
+
+            with path(td):
                 self.call(shlex.split(cmd))
 
-                cmd = "git checkout HEAD metadata.yaml"
-                with td / self.name:
-                    self.call(shlex.split(cmd))
+            cmd = "git checkout HEAD metadata.yaml"
+            with td / self.name:
+                self.call(shlex.split(cmd))
 
-                md = td / self.name / 'metadata.yaml'
-                return yaml.safe_load(md.text())
+            md = td / self.name / 'metadata.yaml'
+            txt = md.text()
+        return yaml.safe_load(txt)
 
     def __repr__(self):
         return '<GitCharm %s>' % self.code_source['location']
