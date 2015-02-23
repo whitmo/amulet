@@ -77,8 +77,8 @@ class Deployment(object):
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
 
-        import ipdb; ipdb.set_trace()
-        c = self.charm_cache.fetch(service, charm, branch=branch, series=self.series)
+        c = self.charm_cache.fetch(service, charm,
+                                   branch=branch, series=self.series)
 
         if c.subordinate:
             for rtype in ['provides', 'requires']:
